@@ -108,46 +108,42 @@ cp save.json save.backup.json   # 备份存档就是复制这个文件
 
 ---
 
-# 方案③（推荐给试玩）：ClawCloud Run 免费托管
 
-> GitHub 账号注册满 180 天 → 每月赠送 $5 额度，无需绑卡。轻量常驻容器一个月约花 $2~4，够用。
-> 本仓库已配好 **Dockerfile + GitHub Actions**：推送 `main` 分支即自动构建镜像发布到
-> `ghcr.io/<你的用户名>/sellout:latest`，ClawCloud 里填这个镜像地址即可。
+---
 
-## 1. 开通（一次性）
+# 方案③（推荐给试玩）：Render 免费托管
 
-1. 浏览器打开 https://run.claw.cloud ，用 GitHub 登录（就是本仓库的账号）；
-2. 区域选 **日本（东京）或 新加坡**（国内直连体验最好）。
+> 更正：原推荐的 ClawCloud Run 已于 2026 年停止服务（官网域名已失效）。
+> Render 免费档：512MB Web 服务、无需绑卡，直接拉取本仓库发布好的镜像。
 
-## 2. 把镜像设为公开（一次性）
+## 0. 前置（一次性）：把镜像设为公开
 
-首次 Actions 构建完成后（仓库 Actions 页看到绿勾）：
+GitHub → 个人页 **Packages** → `sellout` → **Package settings** → 拉到底 **Danger Zone** →
+**Change visibility → Public**（确认框里输入包名 `sellout`）。
+不设公开的话 Render/Koyeb 拉不到镜像。
 
-GitHub 个人页 → **Packages** → `sellout` → **Package settings** → 拉到底 Danger Zone →
-**Change visibility → Public**。不设公开的话 ClawCloud 拉不到镜像。
+## 1. 部署步骤
 
-## 3. 部署
+1. 打开 https://dashboard.render.com → 用 GitHub 登录；
+2. **New +** → **Web Service** → 部署方式选 **Existing Image** → Image URL 填：
+   `ghcr.io/7906/sellout:latest`
+3. 配置：
+   - **Region**: Singapore（离国内最近）
+   - **Instance Type**: Free
+   - **Port**: `3001`（Render 会按此端口转发）
+   - **Environment Variables**：
+     - `GLM_API_KEY` = 你的智谱 Key（https://open.bigmodel.cn 申请，glm-4-flash 免费）
+     - `GATE_PASS` = 自定义访问口令
+4. **Create Web Service** → 等状态变 **Live** → 顶部 `xxx.onrender.com` 地址就是游戏地址，发朋友输口令即玩。
 
-控制台 → **App Launchpad → Create App**：
+## 2. 免费档须知
 
-| 配置项 | 填写 |
-| --- | --- |
-| App Name | `sellout` |
-| Image | `ghcr.io/<你的用户名>/sellout:latest` |
-| CPU / Memory | `0.5 Core / 1024 MB`（最低可 0.25 / 512） |
-| Replicas | 1 |
-| Container Port | `3001`（对应 Dockerfile 的 PORT） |
-| Environment Variables | `GLM_API_KEY=你的智谱Key`、`GATE_PASS=自定义访问口令`（HOST/PORT 已内置，可不填） |
-| Network | 开启 **Public Access**，端口 3001，生成公网地址 |
-| 持久化（可选） | 挂 1GB 卷到 `/app/server/data`，重启不丢存档；不挂则每次重启开新档 |
+- **15 分钟无访问自动休眠**，下次打开约 30~60 秒唤醒（可去 cron-job.org 免费建个每 14 分钟的定时 ping 保活；自 ping 与平台 ToS 有灰色地带，个人小项目通常无碍，自行权衡）；
+- 免费档磁盘为**临时盘**：休眠/重新部署会丢存档（`server/data/save.json`），跨会话进度不做指望；
+- 更新版本：`git push` → Actions 自动构建新镜像 → Render 控制台 **Manual Deploy → Pull latest image**。
 
-部署后打开公网地址 → 输口令 → 开玩。
+# 方案④：Koyeb（备选）
 
-## 4. 更新版本
-
-`git push` 到 `main` → Actions 自动构建新镜像 → ClawCloud 里点 **Update/Redeploy**（镜像 tag 固定 `latest` 时建议开启"总是拉取最新镜像"，或把 tag 换成具体 commit SHA）。
-
-## 5. 费用与风险
-
-- $5/月额度内免费：0.5C/1G 常驻约 $3/月，加 1GB 卷约再 $0.5/月；超了才扣费（不绑卡则停机，不会倒扣）；
-- 平台较新，**别当生产环境**；存档记得偶尔从 `/app/server/data/save.json` 备份（控制台可进容器终端）。
+免费档：1 个 512MB 实例，无需绑卡，入口 https://app.koyeb.com 。
+Create Service → **Docker** → Image 填 `ghcr.io/7906/sellout:latest` → Port `3001` →
+环境变量同上 → 开启公网地址。免费实例同样有休眠与临时盘限制；免费实例区域偏欧美，国内延迟略高。
