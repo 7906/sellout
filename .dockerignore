@@ -1,0 +1,15 @@
+node_modules/
+client/dist/
+server/data/
+server/logs/
+logs/
+.env
+.env.local
+*.log
+tools/
+xhs-tool/
+.git/
+.gitignore
+*.md
+Dockerfile
+.dockerignore

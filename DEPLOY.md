@@ -105,3 +105,49 @@ cp save.json save.backup.json   # 备份存档就是复制这个文件
 | 朋友玩 | 服务器上的 `npm run start:prod`（systemd 常驻） | http://服务器IP |
 
 生产模式 = `@fastify/static` 同端口托管 `client/dist` + API（`server.ts` 自动检测 dist 存在即启用）。
+
+---
+
+# 方案③（推荐给试玩）：ClawCloud Run 免费托管
+
+> GitHub 账号注册满 180 天 → 每月赠送 $5 额度，无需绑卡。轻量常驻容器一个月约花 $2~4，够用。
+> 本仓库已配好 **Dockerfile + GitHub Actions**：推送 `main` 分支即自动构建镜像发布到
+> `ghcr.io/<你的用户名>/sellout:latest`，ClawCloud 里填这个镜像地址即可。
+
+## 1. 开通（一次性）
+
+1. 浏览器打开 https://run.claw.cloud ，用 GitHub 登录（就是本仓库的账号）；
+2. 区域选 **日本（东京）或 新加坡**（国内直连体验最好）。
+
+## 2. 把镜像设为公开（一次性）
+
+首次 Actions 构建完成后（仓库 Actions 页看到绿勾）：
+
+GitHub 个人页 → **Packages** → `sellout` → **Package settings** → 拉到底 Danger Zone →
+**Change visibility → Public**。不设公开的话 ClawCloud 拉不到镜像。
+
+## 3. 部署
+
+控制台 → **App Launchpad → Create App**：
+
+| 配置项 | 填写 |
+| --- | --- |
+| App Name | `sellout` |
+| Image | `ghcr.io/<你的用户名>/sellout:latest` |
+| CPU / Memory | `0.5 Core / 1024 MB`（最低可 0.25 / 512） |
+| Replicas | 1 |
+| Container Port | `3001`（对应 Dockerfile 的 PORT） |
+| Environment Variables | `GLM_API_KEY=你的智谱Key`、`GATE_PASS=自定义访问口令`（HOST/PORT 已内置，可不填） |
+| Network | 开启 **Public Access**，端口 3001，生成公网地址 |
+| 持久化（可选） | 挂 1GB 卷到 `/app/server/data`，重启不丢存档；不挂则每次重启开新档 |
+
+部署后打开公网地址 → 输口令 → 开玩。
+
+## 4. 更新版本
+
+`git push` 到 `main` → Actions 自动构建新镜像 → ClawCloud 里点 **Update/Redeploy**（镜像 tag 固定 `latest` 时建议开启"总是拉取最新镜像"，或把 tag 换成具体 commit SHA）。
+
+## 5. 费用与风险
+
+- $5/月额度内免费：0.5C/1G 常驻约 $3/月，加 1GB 卷约再 $0.5/月；超了才扣费（不绑卡则停机，不会倒扣）；
+- 平台较新，**别当生产环境**；存档记得偶尔从 `/app/server/data/save.json` 备份（控制台可进容器终端）。
