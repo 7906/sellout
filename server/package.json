@@ -1,0 +1,26 @@
+{
+  "name": "@sellup/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "start:prod": "tsx src/server.ts",
+    "check:dayloop": "tsx scripts/dayloop-check.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@fastify/static": "^10.1.3",
+    "@sellup/shared": "*",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.2.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

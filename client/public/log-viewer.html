@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>SELL OUT — 复盘 LOG</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #1c2420; color: #e8e8e8; display: flex; height: 100vh; }
+  #side { width: 300px; overflow-y: auto; border-right: 1px solid #3a4046; background: #22282a; }
+  #side h1 { font-size: 15px; padding: 12px 14px; margin: 0; border-bottom: 1px solid #3a4046; color: #ffd960; }
+  .sess { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #2c3336; }
+  .sess:hover, .sess.active { background: #2f383c; }
+  .sess .t { font-size: 12px; color: #9aa3ad; }
+  .sess .n { font-size: 14px; font-weight: bold; }
+  .sess .meta { font-size: 11px; color: #8a94a0; margin-top: 3px; }
+  #main { flex: 1; overflow-y: auto; padding: 18px 22px; }
+  .empty { color: #8a94a0; padding: 40px; text-align: center; }
+  .turn, .sale { background: #262c30; border: 1px solid #3a4046; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+  .sale { background: #2d2a20; border-color: #6d5a2a; }
+  .sale.ok { background: #1f3a26; border-color: #3a6d4a; }
+  .who { font-size: 11px; color: #9aa3ad; margin-bottom: 4px; }
+  .player-text { font-size: 14px; color: #a8c8f0; }
+  .npc-text { font-size: 14px; margin-top: 6px; }
+  .tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { font-size: 10px; padding: 1px 7px; border-radius: 8px; background: #333b42; color: #b8c2cc; }
+  .tag.warn { background: #5d3a2e; color: #e8b8a8; }
+  .tag.good { background: #2e5d3a; color: #a8e8b8; }
+  .vitals { margin-top: 6px; font-size: 12px; color: #9aa3ad; }
+  .vitals b { color: #e8c060; }
+  .delta.up { color: #a8e8b8; } .delta.down { color: #e8a8a8; }
+  details { margin-top: 6px; }
+  summary { font-size: 11px; color: #7d8894; cursor: pointer; }
+  pre { font-size: 11px; background: #1a1d20; padding: 8px; border-radius: 6px; overflow-x: auto; color: #b8c2cc; }
+  #refresh { margin: 10px 14px; width: calc(100% - 28px); background: #3a4046; color: #e8e8e8; border: 1px solid #565e66; border-radius: 6px; padding: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="side">
+  <h1>📋 复盘 LOG</h1>
+  <button id="refresh">↻ 刷新</button>
+  <div id="sess-list"><div class="empty">加载中…</div></div>
+</div>
+<div id="main"><div class="empty">← 选择一个会话查看回放</div></div>
+<script type="module">
+const EMO = { frugal_uncle:'👨‍🦳', teacher_li:'👵', sister_zhang:'👩', grandma_chen:'🧓', lao_zhou:'🧔', da_liu:'😤', xiao_ai:'🕶️' };
+const NAMES = { frugal_uncle:'钱大叔', teacher_li:'李老师', sister_zhang:'张姐', grandma_chen:'陈奶奶', lao_zhou:'老周', da_liu:'大刘', xiao_ai:'小艾' };
+const POS = new Set(['trust_up_small','trust_up_medium','interest_up_small','interest_up_medium']);
+const NEG = new Set(['trust_down_small','trust_down_medium','interest_down_small','suspicion_up_small','suspicion_up_medium','patience_down_small']);
+
+function fmtVitals(v, prev) {
+  const cell = (label, key) => {
+    const cur = v[key], old = prev ? prev[key] : null;
+    let delta = '';
+    if (prev && cur !== old) {
+      const d = cur - old;
+      delta = ` <span class="delta ${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d})</span>`;
+    }
+    return `${label} <b>${cur}</b>${delta}`;
+  };
+  return [cell('信任','trust'), cell('兴趣','interest'), cell('怀疑','suspicion'), cell('耐心','patience')]
+    .map(s => `<span>${s}</span>`).join(' · ');
+}
+
+function renderTurn(e) {
+  const eff = (e.effectsApplied ?? []).map(x =>
+    `<span class="tag ${POS.has(x) ? 'good' : NEG.has(x) ? 'warn' : ''}">${x}</span>`).join('');
+  return `<div class="turn">
+    <div class="who">第 ${e.turn} 回合 · ${e.time.slice(11,19)} · ${e.latencyMs}ms${e.fallback ? ' · <span class="tag warn">离线降级</span>' : ''}</div>
+    <div class="player-text">🧍 ${esc(e.playerMessage)}</div>
+    <div class="npc-text">🏠 ${esc(e.npcReply)}</div>
+    <div class="tags"><span class="tag">情绪:${e.emotion}</span><span class="tag">意图:${e.intent}</span>${eff}</div>
+    <div class="vitals">${fmtVitals(e.vitalsAfter, e.vitalsBefore)}</div>
+    ${e.purchase ? `<div class="tags"><span class="tag good">💰 ${esc(e.purchase)}</span></div>` : ''}
+    ${e.error ? `<div class="tags"><span class="tag warn">error: ${esc(e.error)}</span></div>` : ''}
+    ${e.raw ? `<details><summary>LLM 原始输出</summary><pre>${esc(e.raw)}</pre></details>` : ''}
+  </div>`;
+}
+
+function renderSale(e) {
+  return `<div class="sale ${e.passed ? 'ok' : ''}">
+    <div class="who">${e.time.slice(11,19)} · 递合同</div>
+    <div>${e.passed ? '✅' : '❌'} <b>${esc(e.productName)}</b>
+      ${e.passed ? `　佣金 +¥${e.commission}${e.bonus ? ' + 奖金 ¥' + e.bonus : ''}　资产 ¥${e.moneyAfter}`
+                 : `　被拒（${esc(e.reason)}）`}
+    </div>
+    <div class="vitals">${fmtVitals(e.vitalsAfter, e.vitalsBefore)}</div>
+    ${(e.effectsApplied ?? []).length ? `<div class="tags">${e.effectsApplied.map(x => `<span class="tag warn">${x}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+let sessions = [], activeId = null;
+async function load() {
+  const res = await fetch('/api/debug/logs');
+  const data = await res.json();
+  const byId = new Map();
+  for (const e of data.entries) {
+    let s = byId.get(e.sessionId);
+    if (!s) { s = { id: e.sessionId, npcId: e.npcId, events: [], first: e.time, turns: 0, sales: 0, money: 0 }; byId.set(e.sessionId, s); }
+    if (e.type === 'turn') { s.turns++; s.money = e.moneyAfter; }
+    else s.sales++;
+    s.events.push(e);
+    s.last = e.time;
+  }
+  sessions = [...byId.values()].sort((a, b) => b.last.localeCompare(a.last));
+  document.getElementById('sess-list').innerHTML = sessions.map(s =>
+    `<div class="sess" data-id="${s.id}">
+       <div class="n">${EMO[s.npcId] ?? '🏠'} ${NAMES[s.npcId] ?? s.npcId}</div>
+       <div class="t">${s.first.slice(5,19).replace('T',' ')} · ${s.turns} 回合 · ${s.sales} 次递合同</div>
+       <div class="meta">资产 ¥${s.money}</div>
+     </div>`).join('') || '<div class="empty">还没有记录</div>';
+  document.querySelectorAll('.sess').forEach(el =>
+    el.addEventListener('click', () => show(el.dataset.id)));
+  if (sessions.length && !activeId) show(sessions[0].id);
+}
+
+function show(id) {
+  activeId = id;
+  document.querySelectorAll('.sess').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  const sorted = [...s.events].sort((a, b) => a.time.localeCompare(b.time) || (a.seq ?? 0) - (b.seq ?? 0));
+  document.getElementById('main').innerHTML =
+    `<h2 style="font-size:16px">${NAMES[s.npcId] ?? s.npcId} — ${s.id.split('_').slice(1).join('_').slice(0,19)}</h2>` +
+    sorted.map(e => e.type === 'turn' ? renderTurn(e) : renderSale(e)).join('');
+}
+
+document.getElementById('refresh').addEventListener('click', () => { activeId = null; load(); });
+load();
+</script>
+</body>
+</html>

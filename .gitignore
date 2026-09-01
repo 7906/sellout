@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+.env
+.env.local
+server/logs/
+.DS_Store
+
+server/data/
+logs/chat-export-*.md
+
+# 54MB 第三方二进制不入库：https://github.com/cloudflare/cloudflared/releases
+tools/cloudflared.exe
