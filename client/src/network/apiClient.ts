@@ -7,13 +7,16 @@ import type {
   SaleAdvice,
 } from "@sellup/shared";
 
+// 子路径部署时请求统一带前缀（BASE_URL 由 vite base 注入；开发/直连部署为 "/"）
+const BASE = import.meta.env.BASE_URL.replace(/\/+$/, "");
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   // 只在有请求体时声明 JSON 头：POST 无 body 带 JSON 头会被 Fastify 判空 body 400
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string> | undefined),
   };
   if (init?.body) headers["Content-Type"] = "application/json";
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetch(BASE + url, { ...init, headers });
   const body: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const msg =

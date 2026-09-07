@@ -24,6 +24,19 @@ async function main(): Promise<void> {
 
   await app.register(cors, { origin: true });
 
+  // ===== 子路径部署（PUBLIC_BASE_PATH，如 /sellout）：nginx 剥前缀回源，
+  //      服务端发给浏览器的绝对路径 Location 统一补回前缀，避免跳到同域其他服务 =====
+  const basePath = config.publicBasePath;
+  if (basePath) {
+    app.addHook("onSend", async (_req, reply, payload) => {
+      const loc = reply.getHeader("location");
+      if (typeof loc === "string" && loc.startsWith("/")) {
+        reply.header("location", basePath + loc);
+      }
+      return payload;
+    });
+  }
+
   const npcService = new NPCService();
   const catalog = new ProductCatalog();
   const playerService = new PlayerService(catalog);
@@ -88,7 +101,7 @@ async function main(): Promise<void> {
     const url = new URL(req.url ?? "/", "http://gate.local");
 
     if (url.pathname === "/__gate" && url.searchParams.get("pass") === config.gatePass) {
-      reply.header("Set-Cookie", `sellout_gate=${config.gatePass}; Path=/; Max-Age=604800; HttpOnly`);
+      reply.header("Set-Cookie", `sellout_gate=${config.gatePass}; Path=${basePath || "/"}; Max-Age=604800; HttpOnly`);
       reply.code(302).header("Location", url.searchParams.get("to") || "/");
       return done();
     }
@@ -100,7 +113,7 @@ async function main(): Promise<void> {
 
     if (url.pathname === "/__gate") {
       const wrong = url.searchParams.has("pass") ? "口令不对，再试试？" : "";
-      reply.code(200).type("text/html; charset=utf-8").send(gateHtml(wrong));
+      reply.code(200).type("text/html; charset=utf-8").send(gateHtml(wrong, basePath));
       return;
     }
     reply.code(302).header("Location", "/__gate?to=" + encodeURIComponent(url.pathname));

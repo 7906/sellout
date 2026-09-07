@@ -92,7 +92,9 @@ function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt
 
 let sessions = [], activeId = null;
 async function load() {
-  const res = await fetch('/api/debug/logs');
+  // 子路径部署时带上前缀（取当前页面所在目录）
+  const base = location.pathname.replace(/\/[^/]*$/, '');
+  const res = await fetch(base + '/api/debug/logs');
   const data = await res.json();
   const byId = new Map();
   for (const e of data.entries) {

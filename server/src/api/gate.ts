@@ -1,5 +1,5 @@
-/** 访客口令页（服务器端生产模式用） */
-export function gateHtml(msg: string): string {
+/** 访客口令页（服务器端生产模式用）；basePath 为反代子路径（如 /sellout），保证表单提交走对入口 */
+export function gateHtml(msg: string, basePath = ""): string {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>成交 · 访客入口</title>
@@ -15,7 +15,7 @@ export function gateHtml(msg: string): string {
   .msg{color:#e8a8a8;font-size:12px;margin-top:10px;min-height:14px}
 </style></head><body><div class="card">
 <h1>SELL OUT / 成交</h1><p>这是私人测试服，请输入访问口令</p>
-<form method="get" action="/__gate"><input name="pass" placeholder="访问口令" autofocus>
+<form method="get" action="${basePath}/__gate"><input name="pass" placeholder="访问口令" autofocus>
 <button type="submit">进门</button></form><div class="msg">${msg}</div>
 </div></body></html>`;
 }

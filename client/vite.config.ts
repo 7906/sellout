@@ -68,7 +68,12 @@ function guestGate(): Plugin {
 
 import path from "node:path";
 
+// 子路径部署：PUBLIC_BASE_PATH=sellout npm run build -w client（与 server/.env 的同名变量保持一致）
+// 兼容带/不带前导斜杠的写法，归一化为 "/sellout"（不带斜杠也避免 Git Bash 把 "/x" 当 POSIX 路径转换）
+const BASE = (process.env.PUBLIC_BASE_PATH ?? "").trim().replace(/^\/+|\/+$/g, "");
+
 export default defineConfig({
+  base: BASE ? BASE + "/" : "/",
   resolve: {
     alias: {
       // 网络层别名：正式版走 HTTP apiClient（小红书离线版用别名指向本地引擎）
