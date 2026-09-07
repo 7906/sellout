@@ -94,7 +94,9 @@ async function main(): Promise<void> {
 
   // ===== 访客口令门：非本机访问需过口令（本机 127.0.0.1/::1 永远放行）=====
   app.addHook("onRequest", (req, reply, done) => {
-    const ra = String(req.socket.remoteAddress ?? "");
+    // 反代部署时必须取真实客户端 IP（nginx 已设 X-Real-IP）：
+    // 否则所有经反代的请求都像来自 127.0.0.1，口令门形同虚设
+    const ra = String(req.headers["x-real-ip"] ?? req.socket.remoteAddress ?? "");
     const isLocal = ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
     if (isLocal) return done();
 
